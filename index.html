@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vacaciones del equipo</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
+      color: #1f2937;
+    }
+
+    .container {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    button, select {
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: white;
+      font-size: 14px;
+    }
+
+    button { cursor: pointer; }
+
+    button.primary {
+      background: #111827;
+      color: white;
+      border-color: #111827;
+    }
+
+    button.danger {
+      background: #dc2626;
+      color: white;
+      border-color: #dc2626;
+    }
+
+    .weekdays, .calendar-row {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+    }
+
+    .weekdays { margin-bottom: 8px; }
+
+    .weekday {
+      text-align: center;
+      font-size: 12px;
+      font-weight: bold;
+      color: #6b7280;
+      padding: 6px 0;
+    }
+
+    .calendar-grid {
+      display: grid;
+      gap: 6px;
+    }
+
+    .day {
+      min-height: 78px;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 8px;
+      background: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      text-align: left;
+      width: 100%;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+
+    .day.empty {
+      background: transparent;
+      border: none;
+      pointer-events: none;
+    }
+
+    .day small {
+      font-size: 10px;
+      line-height: 1.2;
+    }
+
+    .day .num {
+      font-weight: bold;
+      font-size: 15px;
+    }
+
+    .selected, .mini-day.selected {
+      background: #fb923c !important;
+      color: white !important;
+      border-color: #fb923c !important;
+    }
+
+    .conflict, .mini-day.conflict {
+      background: #ef4444 !important;
+      color: white !important;
+      border-color: #ef4444 !important;
+    }
+
+    .partial, .mini-day.partial {
+      background: #fee2e2 !important;
+      color: #991b1b !important;
+      border-color: #fca5a5 !important;
+    }
+
+    .full, .mini-day.full {
+      background: #dc2626 !important;
+      color: white !important;
+      border-color: #dc2626 !important;
+    }
+
+    .saved, .mini-day.saved {
+      background: #fb923c !important;
+      color: white !important;
+      border-color: #fb923c !important;
+    }
+
+    .year-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .mini-month {
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 10px;
+    }
+
+    .mini-title {
+      text-align: center;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .mini-weekdays, .mini-row {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+
+    .mini-weekdays div {
+      text-align: center;
+      font-size: 10px;
+      color: #6b7280;
+    }
+
+    .mini-day {
+      height: 30px;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      background: white;
+      font-size: 11px;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .badge {
+      background: #f59e0b;
+      color: white;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+
+    .badge.red { background: #ef4444; }
+
+    .alert {
+      margin-top: 10px;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+
+    .alert.red {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+
+    .admin-item {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+
+    .admin-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .muted {
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    .legend p {
+      margin: 6px 0;
+      font-size: 14px;
+    }
+
+    .toolbar-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin: 0;
+    }
+
+    @media (max-width: 950px) {
+      .layout { grid-template-columns: 1fr; }
+      .year-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 600px) {
+      .container { padding: 10px; }
+      .card { padding: 12px; }
+      .year-grid { grid-template-columns: 1fr; }
+      .day { min-height: 62px; padding: 6px; }
+      .day .num { font-size: 13px; }
+      .day small { font-size: 9px; }
+      button, select { width: 100%; }
+      .controls { width: 100%; }
+      .controls > * { flex: 1 1 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="layout">
+      <div class="card">
+        <div class="topbar">
+          <div>
+            <h1>Vacaciones del equipo</h1>
+            <p class="muted">Máximo 2 personas por día. Naranja = pedido. Rojo = conflicto o día completo.</p>
+          </div>
+          <div class="controls">
+            <button type="button" onclick="prevYear()">Año anterior</button>
+            <button type="button" onclick="prevMonth()">Mes anterior</button>
+            <button type="button" onclick="toggleView()" id="viewBtn">Vista mensual</button>
+            <button type="button" onclick="nextMonth()">Mes siguiente</button>
+            <button type="button" onclick="nextYear()">Año siguiente</button>
+          </div>
+        </div>
+        <div id="calendar"></div>
+      </div>
+
+      <div>
+        <div class="card" style="margin-bottom:16px;">
+          <h2>Nueva solicitud</h2>
+          <label for="employee">Empleado</label>
+          <select id="employee"></select>
+
+          <h3 style="margin-top:16px;">Días seleccionados</h3>
+          <div id="selectedDays" class="badges"></div>
+          <div id="conflictBox"></div>
+
+          <div class="controls" style="margin-top:16px;">
+            <button type="button" class="primary" onclick="saveRequest()">Guardar solicitud</button>
+            <button type="button" onclick="clearSelection()">Limpiar</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="topbar">
+            <h2 style="margin:0;">Panel de administración</h2>
+            <button type="button" onclick="toggleAdmin()" id="adminBtn">Ocultar</button>
+          </div>
+          <div id="adminPanel"></div>
+        </div>
+
+        <div class="card legend">
+          <p><strong>Empleados:</strong> Andres, Sergio, Alvaro, Lavinia, Cesar, Humberto</p>
+          <p>• Día libre: blanco.</p>
+          <p>• Día ya pedido por una persona: naranja.</p>
+          <p>• Día que seleccionas y coincide con otro: rojo.</p>
+          <p>• Día completo con 2 personas: rojo fuerte y bloqueado.</p>
+          <p>• Se sincroniza con Firebase en tiempo real.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, push, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyC60tv0LMQ6v8mh3lTit5FrIEBADwwdnI",
+      authDomain: "vacaciones-79846.firebaseapp.com",
+      databaseURL: "https://vacaciones-79846-default-rtdb.firebaseio.com",
+      projectId: "vacaciones-79846",
+      storageBucket: "vacaciones-79846.firebasestorage.app",
+      messagingSenderId: "735432338764",
+      appId: "1:735432338764:web:e319650e1e526fbfb2f3e9"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const employees = ["Andres", "Sergio", "Alvaro", "Lavinia", "Cesar", "Humberto"];
+    const monthNames = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+    const weekDays = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+    const MAX_PER_DAY = 2;
+
+    const today = new Date();
+    let currentMonth = today.getMonth();
+    let currentYear = today.getFullYear();
+    let viewMode = "year";
+    let adminOpen = true;
+    let selectedDays = [];
+    let requests = [];
+
+    let isDragging = false;
+    let dragMode = "add";
+    let dragVisited = new Set();
+
+    function formatDate(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+
+    function getMonthMatrix(year, month) {
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      let startOffset = firstDay.getDay();
+      startOffset = startOffset === 0 ? 6 : startOffset - 1;
+
+      const cells = [];
+      for (let i = 0; i < startOffset; i++) cells.push(null);
+      for (let day = 1; day <= lastDay.getDate(); day++) cells.push(new Date(year, month, day));
+      while (cells.length % 7 !== 0) cells.push(null);
+
+      const rows = [];
+      for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7));
+      return rows;
+    }
+
+    function getTakenDays() {
+      const map = {};
+      requests.forEach(request => {
+        request.days.forEach(day => {
+          if (!map[day]) map[day] = [];
+          if (!map[day].includes(request.employee)) map[day].push(request.employee);
+        });
+      });
+      return map;
+    }
+
+    function getSavedDaysByEmployee(employee) {
+      const saved = new Set();
+      requests
+        .filter(r => r.employee === employee)
+        .forEach(r => r.days.forEach(day => saved.add(day)));
+      return saved;
+    }
+
+    function getDayClass(dateStr) {
+      const takenDays = getTakenDays();
+      const occupied = (takenDays[dateStr] || []).length;
+      const isSelected = selectedDays.includes(dateStr);
+      const employee = document.getElementById("employee")?.value || "Sergio";
+      const savedByEmployee = getSavedDaysByEmployee(employee).has(dateStr);
+
+      if (occupied >= MAX_PER_DAY) return isSelected ? "day full" : "day full";
+      if (isSelected && occupied > 0) return "day conflict";
+      if (isSelected) return "day selected";
+      if (savedByEmployee) return "day saved";
+      if (occupied > 0) return "day partial";
+      return "day";
+    }
+
+    function applyDragSelection(dateStr) {
+      if (dragVisited.has(dateStr)) return;
+      dragVisited.add(dateStr);
+
+      const takenDays = getTakenDays();
+      const occupied = (takenDays[dateStr] || []).length;
+      const alreadySelected = selectedDays.includes(dateStr);
+
+      if (dragMode === "add") {
+        if (!alreadySelected && occupied < MAX_PER_DAY) {
+          selectedDays.push(dateStr);
+          selectedDays.sort();
+        }
+      } else {
+        if (alreadySelected) {
+          selectedDays = selectedDays.filter(d => d !== dateStr);
+        }
+      }
+    }
+
+    function startDrag(dateStr) {
+      const alreadySelected = selectedDays.includes(dateStr);
+      const takenDays = getTakenDays();
+      const occupied = (takenDays[dateStr] || []).length;
+
+      if (!alreadySelected && occupied >= MAX_PER_DAY) return;
+
+      dragMode = alreadySelected ? "remove" : "add";
+      isDragging = true;
+      dragVisited = new Set();
+      applyDragSelection(dateStr);
+      renderAll();
+    }
+
+    function enterDrag(dateStr) {
+      if (!isDragging) return;
+      applyDragSelection(dateStr);
+      renderAll();
+    }
+
+    function endDrag() {
+      isDragging = false;
+      dragVisited = new Set();
+    }
+
+    function handleTouchMove(event) {
+      if (!isDragging) return;
+      const touch = event.touches && event.touches[0];
+      if (!touch) return;
+      const element = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (!element) return;
+      const button = element.closest("button[data-date]");
+      if (!button) return;
+      const dateStr = button.dataset.date;
+      if (dateStr) enterDrag(dateStr);
+    }
+
+    function renderMonthView() {
+      const takenDays = getTakenDays();
+      const rows = getMonthMatrix(currentYear, currentMonth);
+
+      let html = `<div class="topbar" style="margin:12px 0;"><h2 style="margin:0;">${monthNames[currentMonth]} ${currentYear}</h2></div>`;
+      html += `<div class="weekdays">${weekDays.map(d => `<div class="weekday">${d}</div>`).join("")}</div>`;
+      html += `<div class="calendar-grid">`;
+
+      rows.forEach(row => {
+        html += `<div class="calendar-row">`;
+        row.forEach(date => {
+          if (!date) {
+            html += `<div class="day empty"></div>`;
+          } else {
+            const key = formatDate(date);
+            const people = takenDays[key] || [];
+            const occupied = people.length;
+
+            html += `
+              <button
+                type="button"
+                data-date="${key}"
+                class="${getDayClass(key)}"
+                onmousedown="startDrag('${key}')"
+                onmouseenter="enterDrag('${key}')"
+                ontouchstart="startDrag('${key}')"
+                ontouchmove="handleTouchMove(event)"
+              >
+                <div class="num">${date.getDate()}</div>
+                <small>${occupied ? `${occupied}/${MAX_PER_DAY} · ${people.join(", ")}` : "Libre"}</small>
+              </button>
+            `;
+          }
+        });
+        html += `</div>`;
+      });
+
+      html += `</div>`;
+      return html;
+    }
+
+    function renderYearView() {
+      let html = `<div class="topbar" style="margin:12px 0;"><h2 style="margin:0;">Año ${currentYear}</h2></div>`;
+      html += `<div class="year-grid">`;
+
+      for (let month = 0; month < 12; month++) {
+        const rows = getMonthMatrix(currentYear, month);
+        html += `<div class="mini-month">`;
+        html += `<div class="mini-title">${monthNames[month]}</div>`;
+        html += `<div class="mini-weekdays">${weekDays.map(d => `<div>${d[0]}</div>`).join("")}</div>`;
+
+        rows.forEach(row => {
+          html += `<div class="mini-row">`;
+          row.forEach(date => {
+            if (!date) {
+              html += `<div></div>`;
+            } else {
+              const key = formatDate(date);
+              const cls = getDayClass(key).replace("day", "mini-day");
+              html += `
+                <button
+                  type="button"
+                  data-date="${key}"
+                  class="${cls}"
+                  onmousedown="startDrag('${key}')"
+                  onmouseenter="enterDrag('${key}')"
+                  ontouchstart="startDrag('${key}')"
+                  ontouchmove="handleTouchMove(event)"
+                >${date.getDate()}</button>
+              `;
+            }
+          });
+          html += `</div>`;
+        });
+
+        html += `</div>`;
+      }
+
+      html += `</div>`;
+      return html;
+    }
+
+    function renderCalendar() {
+      document.getElementById("viewBtn").textContent = viewMode === "month" ? "Vista anual" : "Vista mensual";
+      document.getElementById("calendar").innerHTML = viewMode === "month" ? renderMonthView() : renderYearView();
+    }
+
+    function renderSelected() {
+      const takenDays = getTakenDays();
+      const box = document.getElementById("selectedDays");
+      const conflictBox = document.getElementById("conflictBox");
+
+      if (selectedDays.length === 0) {
+        box.innerHTML = `<span class="muted">No has seleccionado ningún día.</span>`;
+      } else {
+        box.innerHTML = selectedDays.map(day => {
+          const occupied = (takenDays[day] || []).length;
+          const cls = occupied > 0 ? "badge red" : "badge";
+          return `<span class="${cls}">${day}</span>`;
+        }).join("");
+      }
+
+      const conflicts = selectedDays.filter(day => (takenDays[day] || []).length > 0 && (takenDays[day] || []).length < MAX_PER_DAY);
+      const fullSelected = selectedDays.filter(day => (takenDays[day] || []).length >= MAX_PER_DAY);
+
+      let alerts = "";
+      if (conflicts.length) {
+        alerts += `<div class="alert red">Coincide con otro compañero en: ${conflicts.join(", ")}</div>`;
+      }
+      if (fullSelected.length) {
+        alerts += `<div class="alert red">Hay días completos y no se pueden guardar porque el límite es de ${MAX_PER_DAY} personas por día.</div>`;
+      }
+      conflictBox.innerHTML = alerts;
+    }
+
+    function renderAdmin() {
+      const panel = document.getElementById("adminPanel");
+      const btn = document.getElementById("adminBtn");
+      btn.textContent = adminOpen ? "Ocultar" : "Mostrar";
+
+      if (!adminOpen) {
+        panel.innerHTML = "";
+        return;
+      }
+
+      const takenDays = getTakenDays();
+      const fullDays = Object.keys(takenDays).filter(day => takenDays[day].length >= MAX_PER_DAY);
+
+      let html = `
+        <div class="admin-item" style="background:#f9fafb;">
+          <div><strong>Total solicitudes:</strong> ${requests.length}</div>
+          <div><strong>Días completos:</strong> ${fullDays.length}</div>
+          <div><strong>Límite por día:</strong> ${MAX_PER_DAY} personas</div>
+        </div>
+      `;
+
+      employees.forEach(employee => {
+        const employeeRequests = requests.filter(r => r.employee === employee);
+        const totalDays = employeeRequests.reduce((acc, r) => acc + r.days.length, 0);
+
+        html += `<div class="admin-item">`;
+        html += `<div class="admin-head"><strong>${employee}</strong><span class="badge" style="background:#374151;">${totalDays} días</span></div>`;
+
+        if (employeeRequests.length === 0) {
+          html += `<div class="muted">Sin solicitudes.</div>`;
+        } else {
+          employeeRequests.forEach(request => {
+            html += `
+              <div class="admin-item" style="margin-bottom:8px; background:#fff7ed; border-color:#fdba74;">
+                <div class="muted" style="margin-bottom:8px; color:#9a3412;">${request.days.join(", ")}</div>
+                <button type="button" onclick="deleteRequest('${request.id}')">Eliminar</button>
+              </div>
+            `;
+          });
+        }
+        html += `</div>`;
+      });
+
+      html += `<button type="button" class="danger" onclick="clearAllRequests()">Borrar todas las solicitudes</button>`;
+      panel.innerHTML = html;
+    }
+
+    function renderEmployees() {
+      const select = document.getElementById("employee");
+      select.innerHTML = employees.map(e => `<option value="${e}">${e}</option>`).join("");
+      select.value = "Sergio";
+      select.onchange = renderAll;
+    }
+
+    async function saveRequest() {
+      const employee = document.getElementById("employee").value;
+      const takenDays = getTakenDays();
+
+      if (!employee || selectedDays.length === 0) return;
+
+      const blocked = selectedDays.filter(day => (takenDays[day] || []).length >= MAX_PER_DAY);
+      if (blocked.length > 0) {
+        renderAll();
+        return;
+      }
+
+      const requestsRef = ref(db, "requests");
+      const newRef = push(requestsRef);
+
+      await set(newRef, {
+        employee,
+        days: [...selectedDays]
+      });
+
+      selectedDays = [];
+    }
+
+    async function deleteRequest(id) {
+      await remove(ref(db, "requests/" + id));
+    }
+
+    async function clearAllRequests() {
+      await remove(ref(db, "requests"));
+      selectedDays = [];
+    }
+
+    function clearSelection() {
+      selectedDays = [];
+      renderAll();
+    }
+
+    function toggleView() {
+      viewMode = viewMode === "month" ? "year" : "month";
+      renderAll();
+    }
+
+    function toggleAdmin() {
+      adminOpen = !adminOpen;
+      renderAdmin();
+    }
+
+    function prevMonth() {
+      currentMonth--;
+      if (currentMonth < 0) {
+        currentMonth = 11;
+        currentYear--;
+      }
+      viewMode = "month";
+      renderAll();
+    }
+
+    function nextMonth() {
+      currentMonth++;
+      if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+      }
+      viewMode = "month";
+      renderAll();
+    }
+
+    function prevYear() {
+      currentYear--;
+      renderAll();
+    }
+
+    function nextYear() {
+      currentYear++;
+      renderAll();
+    }
+
+    function renderAll() {
+      renderCalendar();
+      renderSelected();
+      renderAdmin();
+      document.onmouseup = endDrag;
+      document.ontouchend = endDrag;
+    }
+
+    function listenRequests() {
+      const requestsRef = ref(db, "requests");
+      onValue(requestsRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        requests = Object.keys(data).map(key => ({
+          id: key,
+          ...data[key]
+        }));
+        renderAll();
+      });
+    }
+
+    window.startDrag = startDrag;
+    window.enterDrag = enterDrag;
+    window.handleTouchMove = handleTouchMove;
+    window.saveRequest = saveRequest;
+    window.clearSelection = clearSelection;
+    window.deleteRequest = deleteRequest;
+    window.clearAllRequests = clearAllRequests;
+    window.toggleView = toggleView;
+    window.toggleAdmin = toggleAdmin;
+    window.prevMonth = prevMonth;
+    window.nextMonth = nextMonth;
+    window.prevYear = prevYear;
+    window.nextYear = nextYear;
+
+    renderEmployees();
+    listenRequests();
+  </script>
+</body>
+</html>
