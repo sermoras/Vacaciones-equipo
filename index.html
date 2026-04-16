@@ -389,16 +389,23 @@
       return rows;
     }
 
-    function getTakenDays() {
-      const map = {};
-      requests.forEach(request => {
-        request.days.forEach(day => {
-          if (!map[day]) map[day] = [];
-          if (!map[day].includes(request.employee)) map[day].push(request.employee);
-        });
-      });
-      return map;
-    }
+function getTakenDays() {
+  const map = {};
+
+  requests.forEach(request => {
+    request.days.forEach(day => {
+      const key = day; // ya viene en formato correcto YYYY-MM-DD
+
+      if (!map[key]) {
+        map[key] = [];
+      }
+
+      map[key].push(request.employee);
+    });
+  });
+
+  return map;
+}
 
     function getSavedDaysByEmployee(employee) {
       const saved = new Set();
