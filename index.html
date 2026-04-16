@@ -394,13 +394,8 @@ function getTakenDays() {
 
   requests.forEach(request => {
     request.days.forEach(day => {
-      const key = day; // ya viene en formato correcto YYYY-MM-DD
-
-      if (!map[key]) {
-        map[key] = [];
-      }
-
-      map[key].push(request.employee);
+      if (!map[day]) map[day] = [];
+      map[day].push(request.employee);
     });
   });
 
@@ -415,21 +410,22 @@ function getTakenDays() {
       return saved;
     }
 
-    function getDayClass(dateStr) {
-      const takenDays = getTakenDays();
-      const occupied = (takenDays[dateStr] || []).length;
-      const isSelected = selectedDays.includes(dateStr);
-      const employee = document.getElementById("employee")?.value || "Sergio";
-      const savedByEmployee = getSavedDaysByEmployee(employee).has(dateStr);
+function getDayClass(dateStr) {
+  const takenDays = getTakenDays();
+  const people = takenDays[dateStr] || [];
+  const occupied = people.length;
+  const employee = document.getElementById("employee")?.value || "Sergio";
+  const otherPeople = people.filter(name => name !== employee);
+  const isSelected = selectedDays.includes(dateStr);
+  const savedByEmployee = people.includes(employee);
 
-      if (occupied >= MAX_PER_DAY) return isSelected ? "day full" : "day full";
-      if (isSelected && occupied > 0) return "day conflict";
-      if (isSelected) return "day selected";
-      if (savedByEmployee) return "day saved";
-      if (occupied > 0) return "day partial";
-      return "day";
-    }
-
+  if (occupied >= MAX_PER_DAY) return "day full";
+  if (isSelected && otherPeople.length > 0) return "day conflict";
+  if (isSelected) return "day selected";
+  if (savedByEmployee) return "day saved";
+  if (occupied > 0) return "day partial";
+  return "day";
+}
     function applyDragSelection(dateStr) {
       if (dragVisited.has(dateStr)) return;
       dragVisited.add(dateStr);
@@ -574,33 +570,44 @@ function getTakenDays() {
       document.getElementById("calendar").innerHTML = viewMode === "month" ? renderMonthView() : renderYearView();
     }
 
-    function renderSelected() {
-      const takenDays = getTakenDays();
-      const box = document.getElementById("selectedDays");
-      const conflictBox = document.getElementById("conflictBox");
+function renderSelected() {
+  const takenDays = getTakenDays();
+  const box = document.getElementById("selectedDays");
+  const conflictBox = document.getElementById("conflictBox");
+  const employee = document.getElementById("employee").value;
 
-      if (selectedDays.length === 0) {
-        box.innerHTML = `<span class="muted">No has seleccionado ningún día.</span>`;
-      } else {
-        box.innerHTML = selectedDays.map(day => {
-          const occupied = (takenDays[day] || []).length;
-          const cls = occupied > 0 ? "badge red" : "badge";
-          return `<span class="${cls}">${day}</span>`;
-        }).join("");
-      }
+  if (selectedDays.length === 0) {
+    box.innerHTML = `<span class="muted">No has seleccionado ningún día.</span>`;
+  } else {
+    box.innerHTML = selectedDays.map(day => {
+      const people = takenDays[day] || [];
+      const otherPeople = people.filter(name => name !== employee);
+      const cls = otherPeople.length > 0 ? "badge red" : "badge";
+      return `<span class="${cls}">${day}</span>`;
+    }).join("");
+  }
 
-      const conflicts = selectedDays.filter(day => (takenDays[day] || []).length > 0 && (takenDays[day] || []).length < MAX_PER_DAY);
-      const fullSelected = selectedDays.filter(day => (takenDays[day] || []).length >= MAX_PER_DAY);
+  const conflicts = selectedDays.filter(day => {
+    const people = takenDays[day] || [];
+    const otherPeople = people.filter(name => name !== employee);
+    return otherPeople.length > 0;
+  });
 
-      let alerts = "";
-      if (conflicts.length) {
-        alerts += `<div class="alert red">Coincide con otro compañero en: ${conflicts.join(", ")}</div>`;
-      }
-      if (fullSelected.length) {
-        alerts += `<div class="alert red">Hay días completos y no se pueden guardar porque el límite es de ${MAX_PER_DAY} personas por día.</div>`;
-      }
-      conflictBox.innerHTML = alerts;
-    }
+  const fullSelected = selectedDays.filter(day => {
+    const people = takenDays[day] || [];
+    return people.length >= MAX_PER_DAY;
+  });
+
+  let alerts = "";
+  if (conflicts.length) {
+    alerts += `<div class="alert red">Coincide con otro compañero en: ${conflicts.join(", ")}</div>`;
+  }
+  if (fullSelected.length) {
+    alerts += `<div class="alert red">Hay días completos y no se pueden guardar porque el límite es de ${MAX_PER_DAY} personas por día.</div>`;
+  }
+
+  conflictBox.innerHTML = alerts;
+}
 
     function renderAdmin() {
       const panel = document.getElementById("adminPanel");
@@ -657,27 +664,42 @@ function getTakenDays() {
     }
 
     async function saveRequest() {
-      const employee = document.getElementById("employee").value;
-      const takenDays = getTakenDays();
+  const employee = document.getElementById("employee").value;
+  const takenDays = getTakenDays();
 
-      if (!employee || selectedDays.length === 0) return;
+  if (!employee || selectedDays.length === 0) {
+    alert("Selecciona al menos un día.");
+    return;
+  }
 
-      const blocked = selectedDays.filter(day => (takenDays[day] || []).length >= MAX_PER_DAY);
-      if (blocked.length > 0) {
-        renderAll();
-        return;
-      }
+  const blocked = selectedDays.filter(day => {
+    const people = takenDays[day] || [];
+    const otherPeople = people.filter(name => name !== employee);
+    return people.length >= MAX_PER_DAY || otherPeople.length >= MAX_PER_DAY;
+  });
 
-      const requestsRef = ref(db, "requests");
-      const newRef = push(requestsRef);
+  if (blocked.length > 0) {
+    alert("Hay días completos y no se pueden guardar.");
+    renderAll();
+    return;
+  }
 
-      await set(newRef, {
-        employee,
-        days: [...selectedDays]
-      });
+  try {
+    const requestsRef = ref(db, "requests");
+    const newRef = push(requestsRef);
 
-      selectedDays = [];
-    }
+    await set(newRef, {
+      employee,
+      days: [...selectedDays]
+    });
+
+    selectedDays = [];
+    renderAll();
+  } catch (error) {
+    console.error(error);
+    alert("Error al guardar en Firebase: " + error.message);
+  }
+}
 
     async function deleteRequest(id) {
       await remove(ref(db, "requests/" + id));
