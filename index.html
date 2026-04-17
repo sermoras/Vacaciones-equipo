@@ -186,7 +186,7 @@
     }
 
     .mini-day {
-      height: 42px;
+      height: 30px;
       border-radius: 8px;
       border: 1px solid #e5e7eb;
       background: white;
@@ -195,7 +195,6 @@
       user-select: none;
       -webkit-user-select: none;
       touch-action: none;
-      line-height: 1.05;
     }
 
     .badges {
@@ -253,12 +252,10 @@
       font-size: 14px;
     }
 
-    .shift-note {
-      display: inline-block;
-      margin-top: 4px;
-      font-size: 10px;
-      line-height: 1.1;
+    .toolbar-title {
+      font-size: 18px;
       font-weight: bold;
+      margin: 0;
     }
 
     @media (max-width: 950px) {
@@ -286,7 +283,7 @@
         <div class="topbar">
           <div>
             <h1>Vacaciones del equipo</h1>
-            <p class="muted">Máximo 2 personas por día. Naranja = pedido. Rojo = conflicto o día completo. Doble clic en un día para poner turno.</p>
+            <p class="muted">Máximo 2 personas por día. Naranja = pedido. Rojo = conflicto o día completo.</p>
           </div>
           <div class="controls">
             <button type="button" onclick="prevYear()">Año anterior</button>
@@ -329,7 +326,6 @@
           <p>• Día ya pedido por una persona: naranja.</p>
           <p>• Día que seleccionas y coincide con otro: rojo.</p>
           <p>• Día completo con 2 personas: rojo fuerte y bloqueado.</p>
-          <p>• Doble clic en un día: poner o quitar turno del empleado seleccionado.</p>
           <p>• Se sincroniza con Firebase en tiempo real.</p>
         </div>
       </div>
@@ -357,7 +353,6 @@
     const monthNames = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
     const weekDays = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
     const MAX_PER_DAY = 2;
-    const SHIFT_OPTIONS = ["AM", "PM", "HD1", "HD AM", "HD PM", "SATS AM", "SATS PM", "BORRAR"];
 
     const today = new Date();
     let currentMonth = today.getMonth();
@@ -395,40 +390,43 @@
       return rows;
     }
 
-    function getTakenDays() {
-      const map = {};
-      requests.forEach(request => {
-        request.days.forEach(day => {
-          if (!map[day]) map[day] = [];
-          map[day].push(request.employee);
-        });
-      });
-      return map;
+function getTakenDays() {
+  const map = {};
+
+  requests.forEach(request => {
+    request.days.forEach(day => {
+      if (!map[day]) map[day] = [];
+      map[day].push(request.employee);
+    });
+  });
+
+  return map;
+}
+
+    function getSavedDaysByEmployee(employee) {
+      const saved = new Set();
+      requests
+        .filter(r => r.employee === employee)
+        .forEach(r => r.days.forEach(day => saved.add(day)));
+      return saved;
     }
 
-    function getDayClass(dateStr) {
-      const takenDays = getTakenDays();
-      const people = takenDays[dateStr] || [];
-      const occupied = people.length;
-      const employee = document.getElementById("employee")?.value || "Sergio";
-      const otherPeople = people.filter(name => name !== employee);
-      const isSelected = selectedDays.includes(dateStr);
-      const savedByEmployee = people.includes(employee);
+function getDayClass(dateStr) {
+  const takenDays = getTakenDays();
+  const people = takenDays[dateStr] || [];
+  const occupied = people.length;
+  const employee = document.getElementById("employee")?.value || "Sergio";
+  const otherPeople = people.filter(name => name !== employee);
+  const isSelected = selectedDays.includes(dateStr);
+  const savedByEmployee = people.includes(employee);
 
-      if (occupied >= MAX_PER_DAY) return "day full";
-      if (isSelected && otherPeople.length > 0) return "day conflict";
-      if (isSelected) return "day selected";
-      if (savedByEmployee) return "day saved";
-      if (occupied > 0) return "day partial";
-      return "day";
-    }
-
-    function getShiftForSelectedEmployee(dateStr) {
-      const employee = document.getElementById("employee")?.value;
-      if (!employee) return "";
-      return shifts[employee]?.[dateStr] || "";
-    }
-
+  if (occupied >= MAX_PER_DAY) return "day full";
+  if (isSelected && otherPeople.length > 0) return "day conflict";
+  if (isSelected) return "day selected";
+  if (savedByEmployee) return "day saved";
+  if (occupied > 0) return "day partial";
+  return "day";
+}
     function applyDragSelection(dateStr) {
       if (dragVisited.has(dateStr)) return;
       dragVisited.add(dateStr);
@@ -486,30 +484,6 @@
       if (dateStr) enterDrag(dateStr);
     }
 
-    async function handleDayClick(dateStr) {
-      const turno = prompt(
-        "Introduce turno:\nAM\nPM\nHD1\nHD AM\nHD PM\nSATS AM\nSATS PM\n\nEscribe BORRAR para quitar el turno"
-      );
-
-      if (!turno) return;
-
-      const t = turno.trim().toUpperCase();
-      if (!SHIFT_OPTIONS.includes(t)) {
-        alert("Turno no válido");
-        return;
-      }
-
-      const employee = document.getElementById("employee").value;
-      if (!employee) return;
-
-      if (t === "BORRAR") {
-        await remove(ref(db, `shifts/${employee}/${dateStr}`));
-        return;
-      }
-
-      await set(ref(db, `shifts/${employee}/${dateStr}`), t);
-    }
-
     function renderMonthView() {
       const takenDays = getTakenDays();
       const rows = getMonthMatrix(currentYear, currentMonth);
@@ -527,24 +501,19 @@
             const key = formatDate(date);
             const people = takenDays[key] || [];
             const occupied = people.length;
-            const shift = getShiftForSelectedEmployee(key);
 
             html += `
               <button
                 type="button"
                 data-date="${key}"
                 class="${getDayClass(key)}"
-                onmousedown="startDrag('${key}')"
-                ondblclick="handleDayClick('${key}')"
+                onmousedown="handleDayClick('${key}')"
                 onmouseenter="enterDrag('${key}')"
                 ontouchstart="startDrag('${key}')"
                 ontouchmove="handleTouchMove(event)"
               >
                 <div class="num">${date.getDate()}</div>
-                <small>
-                  ${occupied ? `${occupied}/${MAX_PER_DAY} · ${people.join(", ")}` : "Libre"}
-                  ${shift ? `<br><span class="shift-note">${shift}</span>` : ""}
-                </small>
+                <small>${occupied ? `${occupied}/${MAX_PER_DAY} · ${people.join(", ")}` : "Libre"}</small>
               </button>
             `;
           }
@@ -574,22 +543,16 @@
             } else {
               const key = formatDate(date);
               const cls = getDayClass(key).replace("day", "mini-day");
-              const shift = getShiftForSelectedEmployee(key);
-
               html += `
                 <button
                   type="button"
                   data-date="${key}"
                   class="${cls}"
                   onmousedown="startDrag('${key}')"
-                  ondblclick="handleDayClick('${key}')"
                   onmouseenter="enterDrag('${key}')"
                   ontouchstart="startDrag('${key}')"
                   ontouchmove="handleTouchMove(event)"
-                >
-                  ${date.getDate()}
-                  ${shift ? `<div style="font-size:9px;line-height:1.1;">${shift}</div>` : ""}
-                </button>
+                >${date.getDate()}</button>
               `;
             }
           });
@@ -608,44 +571,44 @@
       document.getElementById("calendar").innerHTML = viewMode === "month" ? renderMonthView() : renderYearView();
     }
 
-    function renderSelected() {
-      const takenDays = getTakenDays();
-      const box = document.getElementById("selectedDays");
-      const conflictBox = document.getElementById("conflictBox");
-      const employee = document.getElementById("employee").value;
+function renderSelected() {
+  const takenDays = getTakenDays();
+  const box = document.getElementById("selectedDays");
+  const conflictBox = document.getElementById("conflictBox");
+  const employee = document.getElementById("employee").value;
 
-      if (selectedDays.length === 0) {
-        box.innerHTML = `<span class="muted">No has seleccionado ningún día.</span>`;
-      } else {
-        box.innerHTML = selectedDays.map(day => {
-          const people = takenDays[day] || [];
-          const otherPeople = people.filter(name => name !== employee);
-          const cls = otherPeople.length > 0 ? "badge red" : "badge";
-          return `<span class="${cls}">${day}</span>`;
-        }).join("");
-      }
+  if (selectedDays.length === 0) {
+    box.innerHTML = `<span class="muted">No has seleccionado ningún día.</span>`;
+  } else {
+    box.innerHTML = selectedDays.map(day => {
+      const people = takenDays[day] || [];
+      const otherPeople = people.filter(name => name !== employee);
+      const cls = otherPeople.length > 0 ? "badge red" : "badge";
+      return `<span class="${cls}">${day}</span>`;
+    }).join("");
+  }
 
-      const conflicts = selectedDays.filter(day => {
-        const people = takenDays[day] || [];
-        const otherPeople = people.filter(name => name !== employee);
-        return otherPeople.length > 0;
-      });
+  const conflicts = selectedDays.filter(day => {
+    const people = takenDays[day] || [];
+    const otherPeople = people.filter(name => name !== employee);
+    return otherPeople.length > 0;
+  });
 
-      const fullSelected = selectedDays.filter(day => {
-        const people = takenDays[day] || [];
-        return people.length >= MAX_PER_DAY;
-      });
+  const fullSelected = selectedDays.filter(day => {
+    const people = takenDays[day] || [];
+    return people.length >= MAX_PER_DAY;
+  });
 
-      let alerts = "";
-      if (conflicts.length) {
-        alerts += `<div class="alert red">Coincide con otro compañero en: ${conflicts.join(", ")}</div>`;
-      }
-      if (fullSelected.length) {
-        alerts += `<div class="alert red">Hay días completos y no se pueden guardar porque el límite es de ${MAX_PER_DAY} personas por día.</div>`;
-      }
+  let alerts = "";
+  if (conflicts.length) {
+    alerts += `<div class="alert red">Coincide con otro compañero en: ${conflicts.join(", ")}</div>`;
+  }
+  if (fullSelected.length) {
+    alerts += `<div class="alert red">Hay días completos y no se pueden guardar porque el límite es de ${MAX_PER_DAY} personas por día.</div>`;
+  }
 
-      conflictBox.innerHTML = alerts;
-    }
+  conflictBox.innerHTML = alerts;
+}
 
     function renderAdmin() {
       const panel = document.getElementById("adminPanel");
@@ -702,42 +665,82 @@
     }
 
     async function saveRequest() {
-      const employee = document.getElementById("employee").value;
-      const takenDays = getTakenDays();
+  const employee = document.getElementById("employee").value;
+  const takenDays = getTakenDays();
 
-      if (!employee || selectedDays.length === 0) {
-        alert("Selecciona al menos un día.");
-        return;
-      }
+  if (!employee || selectedDays.length === 0) {
+    alert("Selecciona al menos un día.");
+    return;
+  }
+  const blocked = selectedDays.filter(day => {
+    const people = takenDays[day] || [];
+    const otherPeople = people.filter(name => name !== employee);
+    return people.length >= MAX_PER_DAY || otherPeople.length >= MAX_PER_DAY;
+  });
 
-      const blocked = selectedDays.filter(day => {
-        const people = takenDays[day] || [];
-        const otherPeople = people.filter(name => name !== employee);
-        return people.length >= MAX_PER_DAY || otherPeople.length >= MAX_PER_DAY;
-      });
+  if (blocked.length > 0) {
+    alert("Hay días completos y no se pueden guardar.");
+    renderAll();
+    return;
+  }
 
-      if (blocked.length > 0) {
-        alert("Hay días completos y no se pueden guardar.");
-        renderAll();
-        return;
-      }
+  // Check for shift conflicts
+  const conflictShifts = selectedDays.filter(day => getShiftForSelectedEmployee(day));
+  if (conflictShifts.length > 0) {
+    alert(`No puedes solicitar vacaciones en días con turnos asignados: ${conflictShifts.join(", ")}`);
+    return;
+  }
 
-      try {
-        const requestsRef = ref(db, "requests");
-        const newRef = push(requestsRef);
+  try {
+    const requestsRef = ref(db, "requests");
+    const newRef = push(requestsRef);
 
-        await set(newRef, {
-          employee,
-          days: [...selectedDays]
-        });
+    await set(newRef, {
+      employee,
+      days: [...selectedDays]
+    });
 
-        selectedDays = [];
-        renderAll();
-      } catch (error) {
-        console.error(error);
-        alert("Error al guardar en Firebase: " + error.message);
-      }
-    }
+    selectedDays = [];
+    renderAll();
+  } catch (error) {
+    console.error(error);
+    alert("Error al guardar en Firebase: " + error.message);
+  }
+}
+
+    async function handleDayClick(dateStr) {
+  const employee = document.getElementById("employee").value;
+  if (!employee) return;
+
+  // Check if has vacation on that day
+  const hasVacation = requests.some(r => r.employee === employee && r.days.includes(dateStr));
+  if (hasVacation) {
+    alert("No puedes asignar un turno en un día de vacaciones.");
+    return;
+  }
+
+  const options = ["AM", "PM", "HD1", "HD AM", "HD PM", "BORRAR"];
+
+  const turno = prompt(
+    "Introduce turno:\nAM\nPM\nHD1\nHD AM\nHD PM\n\nEscribe BORRAR para quitar el turno"
+  );
+
+  if (!turno) return;
+
+  const t = turno.trim().toUpperCase();
+
+  if (!options.includes(t)) {
+    alert("Turno no válido");
+    return;
+  }
+
+  if (t === "BORRAR") {
+    await remove(ref(db, `shifts/${employee}/${dateStr}`));
+    return;
+  }
+
+  await set(ref(db, `shifts/${employee}/${dateStr}`), t);
+}
 
     async function deleteRequest(id) {
       await remove(ref(db, "requests/" + id));
@@ -746,7 +749,6 @@
     async function clearAllRequests() {
       await remove(ref(db, "requests"));
       selectedDays = [];
-      renderAll();
     }
 
     function clearSelection() {
@@ -813,15 +815,19 @@
         renderAll();
       });
     }
-
+    
     function listenShifts() {
-      const shiftsRef = ref(db, "shifts");
-      onValue(shiftsRef, (snapshot) => {
-        shifts = snapshot.val() || {};
-        renderAll();
-      });
-    }
+  const shiftsRef = ref(db, "shifts");
 
+  onValue(shiftsRef, (snapshot) => {
+    shifts = snapshot.val() || {};
+    renderAll();
+  });
+}
+    function getShiftForSelectedEmployee(dateStr) {
+  const employee = document.getElementById("employee").value;
+  return shifts[employee]?.[dateStr] || "";
+}
     window.startDrag = startDrag;
     window.enterDrag = enterDrag;
     window.handleTouchMove = handleTouchMove;
